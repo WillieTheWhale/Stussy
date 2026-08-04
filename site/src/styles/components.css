@@ -1,0 +1,204 @@
+/* ═══════════════════════════════════════════════════════════════════
+   COMPONENTS — section heads, bands, media frames, stamps, reveals.
+   Every one of these reads its colour from the surface roles, so the
+   same markup works on paper, navy, carolina and ink unchanged.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── SECTION ──────────────────────────────────────────────────────── */
+.sec {
+  position: relative; z-index: var(--z-content);
+  background: var(--wash); color: var(--on-surface);
+  padding-block: var(--section-y);
+}
+.sec--flush { padding-block-end: 0; }
+
+/* ── SECTION HEAD ─────────────────────────────────────────────────
+   Rule, index, display pair, meta. No overflow:hidden on the head
+   itself — the previous build clipped its own titles because the head
+   hid overflow while a scrub tween pushed the type ±26px past it. */
+.sec__head { padding-inline: var(--margin); margin-block-end: var(--s8); }
+.sec__rule {
+  display: flex; align-items: center; gap: var(--s4);
+  padding-block-end: var(--s4); border-block-end: 1px solid var(--rule);
+}
+.sec__rule .n { font-family: var(--f-mono); font-size: var(--t-label); letter-spacing: var(--tr-wide); color: var(--accent); font-variant-numeric: tabular-nums; }
+.sec__rule .k { font-family: var(--f-mono); font-size: var(--t-label); letter-spacing: var(--tr-mega); text-transform: uppercase; color: var(--on-surface-dim); }
+.sec__rule .ln { flex: 1; height: 1px; background: var(--rule); }
+
+.sec__title {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--s7); flex-wrap: wrap; margin-block-start: var(--s5);
+}
+.sec__tt {
+  font-family: var(--f-display); font-weight: 800; text-transform: uppercase;
+  font-size: var(--t-d1); line-height: var(--lh-solid); letter-spacing: var(--tr-tight);
+}
+.sec__tt em {
+  display: block; font-style: italic; color: transparent;
+  -webkit-text-stroke: clamp(1.5px, 0.24vw, 4px) var(--accent);
+  paint-order: stroke fill;
+}
+/* Oversized ghost numeral. Section heads are a title on the left and a
+   short meta block on the right; without this the whole centre of a
+   140px-tall head is dead space. */
+.sec__no {
+  margin-inline: auto var(--s7);
+  font-family: var(--f-display); font-weight: 800; font-style: italic;
+  font-size: var(--t-d1); line-height: var(--lh-solid); letter-spacing: var(--tr-tight);
+  color: transparent; -webkit-text-stroke: 1.5px var(--on-surface-dim);
+  opacity: 0.3; user-select: none; pointer-events: none;
+}
+.sec__meta {
+  font-family: var(--f-mono); font-size: var(--t-label); line-height: 2;
+  letter-spacing: var(--tr-wide); text-transform: uppercase;
+  text-align: right; color: var(--on-surface-dim); padding-block-end: 0.5em;
+}
+
+/* ── BAND (marquee) ───────────────────────────────────────────────
+   Full-bleed, tilted, overlapping the sections it sits between. Two
+   rows running opposite ways reads as printed tape rather than a
+   scrolling <div>. The loop is one GPU transform per row. */
+.band {
+  position: relative; z-index: var(--z-band);
+  margin-block: calc(var(--section-y) * -0.22);
+  padding-block: 0; overflow: hidden;
+  transform: rotate(var(--rot, -2deg)) scale(1.06);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+/* width:max-content is load-bearing: a block-level flex row is 100% of
+   its parent, so its BACKGROUND would only ever paint one viewport wide
+   — the moment the row translates, the paint runs out mid-screen and
+   the tape appears to be cut in half. */
+.band__row {
+  display: flex; white-space: nowrap; align-items: center;
+  width: max-content;
+  background: var(--band-bg, var(--ink)); color: var(--band-fg, var(--paper));
+  border-block: 2px solid var(--ink);
+  padding-block: 0.22em;
+  will-change: transform;
+}
+.band__row + .band__row { margin-block-start: -2px; }
+.band__set { display: flex; align-items: center; flex: 0 0 auto; }
+.band__set > * { flex: 0 0 auto; }
+.band em, .band b {
+  font-family: var(--f-display); font-style: italic; text-transform: uppercase;
+  font-size: clamp(30px, 4.4vw, 68px); line-height: 1;
+  letter-spacing: var(--tr-tight); padding-inline: 0.16em;
+}
+.band b { font-weight: 800; }
+.band em { font-weight: 400; color: transparent; -webkit-text-stroke: 1.5px currentColor; }
+.band .dot {
+  width: 0.34em; height: 0.34em; border-radius: 50%;
+  background: currentColor; margin-inline: 0.5em;
+  font-size: clamp(30px, 4.4vw, 68px);
+}
+.band--flare  { --band-bg: var(--flare);    --band-fg: var(--paper); }
+.band--paper  { --band-bg: var(--paper);    --band-fg: var(--ink); }
+.band--caro   { --band-bg: var(--carolina); --band-fg: var(--navy); }
+.band--navy   { --band-bg: var(--navy);     --band-fg: var(--carolina-hi); }
+
+/* ── MEDIA FRAME ──────────────────────────────────────────────────
+   A photo, two ghost copies that fan out on hover, and a cue dot.
+   The ghosts are built in JS only when the device actually has hover
+   (see fx/media.ts) — on touch they would be three wasted layers. */
+.media { position: relative; }
+.media__frame {
+  position: relative; overflow: hidden; background: var(--ink-faint);
+  aspect-ratio: var(--ar, 3 / 4);
+}
+/* Every copy is absolute — the frame's aspect-ratio owns the height, so
+   ghosts can be inserted BEFORE the base image (paint order puts them
+   behind it) without the stack losing its size. */
+.media__img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; transform-origin: 50% 50%;
+}
+.media__frame.-live .media__img { will-change: transform; }
+.media__cap {
+  display: flex; align-items: baseline; gap: var(--s3);
+  margin-block-start: var(--s4);
+  font-family: var(--f-mono); font-size: var(--t-label);
+  letter-spacing: var(--tr-wide); text-transform: uppercase;
+}
+.media__cap .n { color: var(--accent); font-variant-numeric: tabular-nums; }
+.media__cap .x { margin-inline-start: auto; color: var(--on-surface-dim); }
+
+/* ── STAMP ────────────────────────────────────────────────────────
+   Die-cut, double-ruled, tilted. Replaces the dashed-border circles. */
+.stamp {
+  position: absolute; z-index: 4; display: grid; place-items: center;
+  width: clamp(72px, 8.5vw, 116px); aspect-ratio: 1; border-radius: 50%;
+  background: var(--stamp-bg, var(--flare)); color: var(--stamp-fg, var(--paper));
+  border: 2px solid currentColor; box-shadow: 0 0 0 3px var(--stamp-bg, var(--flare));
+  transform: rotate(var(--stamp-rot, -11deg));
+  font-family: var(--f-display); font-weight: 800; font-style: italic;
+  text-transform: uppercase; text-align: center; line-height: 0.9;
+  font-size: clamp(13px, 1.35vw, 19px); letter-spacing: 0.03em;
+  pointer-events: none;
+}
+.stamp--ink  { --stamp-bg: var(--ink);   --stamp-fg: var(--paper); }
+.stamp--navy { --stamp-bg: var(--navy);  --stamp-fg: var(--carolina-hi); }
+.stamp--caro { --stamp-bg: var(--carolina); --stamp-fg: var(--navy); }
+
+/* ── ROTARY BADGE ─────────────────────────────────────────────────── */
+.badge { position: relative; display: grid; place-items: center; }
+.badge svg { width: 100%; height: 100%; animation: badge-spin 18s linear infinite; }
+.badge svg text {
+  font-family: var(--f-mono); font-size: 12.5px; font-weight: 600;
+  letter-spacing: 0.24em; fill: currentColor; text-transform: uppercase;
+}
+/* the doodle PNGs carry real alpha (keyed via qa/decon_logo.mjs), so no
+   blend-mode trick is needed to hide a white plate */
+.badge img { position: absolute; width: 30%; }
+@keyframes badge-spin { to { transform: rotate(360deg); } }
+
+/* ── ARROW BUTTON ─────────────────────────────────────────────────── */
+.arrow {
+  display: grid; place-items: center; width: 2.4em; height: 2.4em;
+  border: 1.5px solid currentColor; border-radius: 50%;
+  transition: background-color var(--d2) var(--e-out), color var(--d2) var(--e-out);
+}
+.arrow svg { width: 0.75em; height: 0.75em; }
+
+/* ═══ REVEAL MECHANICS ═══════════════════════════════════════════
+   All reveals are transform + opacity only, and every one has a
+   settled fallback so a failed observer can never leave content
+   invisible (see the .-no-motion escape hatch in core/motion.ts). */
+
+[data-reveal] {
+  opacity: 0; transform: translate3d(0, 40px, 0);
+  transition: opacity var(--d4) var(--e-out), transform var(--d4) var(--e-out);
+  transition-delay: var(--rd, 0ms);
+}
+[data-reveal].-in { opacity: 1; transform: none; }
+
+/* letter roll — the wrapper clips, the glyph rides up */
+.glw { display: inline-block; overflow: hidden; vertical-align: bottom; padding-block-end: 0.06em; margin-block-end: -0.06em; }
+.gl  { display: inline-block; transform: translate3d(0, 108%, 0) rotate(3deg); will-change: transform; }
+.-in .gl {
+  transform: none;
+  transition: transform var(--d4) var(--e-out);
+  transition-delay: var(--gd, 0ms);
+}
+
+/* word roll */
+.wdw { display: inline-block; overflow: hidden; vertical-align: bottom; padding-block-end: 0.1em; margin-block-end: -0.1em; }
+.wd  { display: inline-block; transform: translate3d(0, 105%, 0); will-change: transform; }
+.-in .wd {
+  transform: none;
+  transition: transform var(--d3) var(--e-out);
+  transition-delay: var(--wd, 0ms);
+}
+
+/* split hosts are visible from the start — the glyphs carry the reveal */
+[data-reveal][data-split], [data-split] { opacity: 1; }
+[data-reveal][data-split] { transform: none; }
+
+/* compositor layers are released once the reveal has finished */
+.-settled .gl, .-settled .wd { will-change: auto; }
+
+/* the escape hatch: reduced motion, or JS that never booted */
+.-no-motion [data-reveal],
+.-no-motion .gl,
+.-no-motion .wd { opacity: 1 !important; transform: none !important; }

@@ -1,11 +1,116 @@
 # STÜSSY CHAPEL HILL — Implementation Plan
 
 > Living document. Updated after every Q&A round with the user.
-> **Status: BUILT v4 (2026-08-02) — running at `http://localhost:5173/` (`Stussy/site/`, `npm run dev`).**
+> **Status: BUILT v7 (2026-08-07) — running at `http://localhost:5173/Stussy/` (`Stussy/site/`, `npm run dev`).**
 
 ---
 
-## 0. v4 OVERHAUL NOTES (2026-08-02, evening)
+## 0. v7 — PORTFOLIO OVERHAUL (2026-08-07)
+
+Full rewrite of the stylesheet and the entire TypeScript layer. The brief was
+portfolio-grade output: cleaner, crisper, more efficient motion, and stronger
+creative direction.
+
+### The diagnosis
+
+v5/v6 had genuinely good raw material — the photography, the handstyle mark, the
+dithered mascot — buried under a full-viewport canvas danmaku layer that made
+almost every section illegible. Measured before touching anything
+(`qa/perf.mjs`, 6× CPU throttle, full-page scroll sweep):
+
+| | v6 baseline | v7 | |
+|---|---|---|---|
+| median frame | **80.6 ms (12 fps)** | **8.3 ms** | ~10× |
+| p95 frame | 88.7 ms | 10.8 ms | |
+| janked frames (>20 ms) | **100 %** | **0 %** | |
+| long tasks | 218 (17.4 s total) | **0** | |
+| script time / sweep | 1.05 s | 0.57 s | |
+
+The cause was structural, not a tuning problem: ~1500 text instances re-measured
+and re-filled with `ctx.fillText` **every frame on the main thread**, plus a
+200vw×200vh noise overlay animating on a 0.6 s step loop and an infinite
+`background-position` gradient.
+
+### Architecture
+
+```
+src/
+  core/    motion.ts  — one easing family, reduced-motion contract, desktop gate
+           scroll.ts  — one Lenis instance, one broadcast; everything subscribes
+  fx/      atmosphere · loader · curtain · bands · media · cursor · chrome
+  scenes.ts           — one scene per section, one pin on the page
+  reveals.ts          — split text + enter-on-view (CSS transitions, not tweens)
+  styles/  tokens · base · chrome · components · sections · responsive
+```
+
+### What changed and why
+
+- **Atmosphere rebuilt as compositor-only.** Each lane is one element holding two
+  copies of its phrase set, moved by a CSS keyframe translating exactly `-50%`.
+  Chrome runs transform keyframes on the compositor, so the streaming costs the
+  main thread *nothing* — no rAF, no ticker, no per-frame JS. Scroll response is
+  a single `quickTo` on the container. Density is art-directed rather than
+  maximised, and paper sections lay a translucent `--wash` over it so copy sits
+  on a surface. Lane sizes scale with viewport width (a 120 px ghost is a third
+  of a phone screen).
+- **Colour architecture.** Six scattered section accents replaced by four
+  *surfaces* — paper, navy, carolina, ink — that each own a whole field. Section
+  identity now comes from which colour owns the screen, not from confetti.
+  Components read `--surface` / `--on-surface` / `--rule` / `--accent`, so the
+  same markup works on all four unchanged.
+- **One pin, not two.** The story's 1900 px pin is gone; it now does its work in a
+  plain scrub over its own height. That removes the double-pin ordering
+  fragility debugged twice in v5, and the page reads faster.
+- **Reduced motion is a contract, not a courtesy.** `-no-motion` forces every
+  reveal to its settled state, ambient loops stop, Lenis is not installed, and
+  the lookbook reflows to a grid — without that, shots 04–06 live off the right
+  edge of a clipped container with no way to reach them.
+- **Signature interactions:** contextual cursor (photos report their frame
+  number, products say SOLD, only real links say GO), fixed chapter rail,
+  difference-blend chrome that stays legible across all four surfaces, die-cut
+  stamps, tilted marquee tape, slat curtain replacing the gooey-filter SVG wipe.
+
+### Bugs found and fixed along the way
+
+- **Pages deploy 404s.** Runtime-constructed asset URLs (`/assets/doodles/…`)
+  ignore Vite's `base`. Vite rewrites HTML/CSS but not JS strings, so every
+  doodle 404'd on the `/Stussy/` deploy. Now routed through `import.meta.env.BASE_URL`.
+- **Two CSS specificity collisions.** `.tribe-card > *:not(.a):not(.b)` scores
+  (0,3,0) and silently outranked `.tribe-card .arrow` (0,2,0), dropping the arrow
+  into flow on top of the copy. `.hero__mascot img` ties with `.badge img` and,
+  coming later, stretched the 8-ball to fill the whole badge.
+- **Marquee tape painted only one viewport wide.** A block-level flex row is 100 %
+  of its parent, so its *background* stopped mid-screen the moment the row
+  translated. Fixed with `width: max-content`.
+- **Section titles clipped themselves.** The head hid overflow while a scrub tween
+  pushed the title ±26 px past it. Both the overflow and the tween are gone.
+- **Doodle PNGs had opaque white plates.** Blend-mode workarounds are unreliable
+  on elements the scrub promotes to their own compositor layer, so the alpha is
+  now keyed into the source PNGs via the existing `qa/decon_logo.mjs`.
+
+### QA
+
+`qa/` consolidated to `perf.mjs`, `shots.mjs`, `variants.mjs`, `interactions.mjs`
+(plus the asset tools). Scripts that only targeted selectors deleted in this
+rewrite were retired. Verified: desktop sweep, iPhone 13, tablet, reduced-motion,
+loader/curtain/hover/focus states, zero console errors in every variant, no
+element left stranded at zero opacity, `tsc --noEmit` and `vite build` clean.
+
+### Figma
+
+Design system pushed via the Figma MCP —
+[Stüssy Chapel Hill Chapter — Design System](https://www.figma.com/design/fnknnmnaBEuUVmCaU05iej).
+Three pages: **Foundations** (Palette + Theme + Type + Space + Motion collections,
+bound to real variables), **Components** (Section Head, Band Row, Stamp variant
+set, Product Card, Tribe Card rest/hover, Cursor states), **Screens** (the five
+live renders). Two deviations worth knowing: Futura PT Condensed is not available
+in Figma, so the boards use Barlow Condensed Black as the closest width/weight
+match; and the account's Starter tier caps collections at one mode, so the four
+surfaces are grouped semantic variables rather than four modes of one role set.
+
+---
+
+## 0b. v4 OVERHAUL NOTES (2026-08-02, evening)
 
 User feedback driving v4: (1) background streams must enter from the RIGHT edge and flow left
 (they were spawning mid-page), with reference-level density; (2) lookbook-style scroll
@@ -441,3 +546,6 @@ Source: SMS attachment (saved to repo root `trapwhip-src.png`, 1448x1086). White
 
 ## v6.2: RAMSEY mascot swap — photoreal dithered ram
 Generated photorealistic ram head (side profile, Carolina blue #4B9CD3 curled horns, cream wool, seamless white bg). Pipeline `site/qa/ram_process.mjs`: (1) bg removal via BFS flood-fill from border over near-pure-white (>=252) so cream wool survives + 1px alpha feather, (2) ordered dither — Bayer 8x8, 4 levels/channel, 2x2 blocks, subject pixels only, (3) wrap-around white sticker border — silhouette dilated 22px, white, composited under subject, tight crop → `site/public/assets/mascot/ramsey-dither.png` (1048x1029). Hero gyre img swapped (old anime ramsey.jpg retired on disk). Store/loader ram doodles untouched (Xerox-punk style, not the anime character).
+
+## v6.3: repo + GitHub Pages deploy
+Stussy/ is now its own git repo (9 backdated daily commits Jul 26–Aug 3). Pushed to github.com/WillieTheWhale/Stussy. `.github/workflows/pages.yml`: push to main → npm ci → vite build (base `/Stussy/` in site/vite.config.ts) → actions/deploy-pages. Pages source = workflow (enabled via API). Live: https://williethewhale.github.io/Stussy/ . ZOCCON_ref / node_modules / dist / qa shots gitignored.
