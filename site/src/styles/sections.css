@@ -30,7 +30,7 @@
 }
 .hero__lockup { position: relative; }
 .hero__mark {
-  width: min(58vw, 720px); height: auto;
+  display: block; width: min(58vw, 720px); aspect-ratio: 735 / 506;
   transform: rotate(-2deg); transform-origin: 0 50%;
 }
 .hero__tag {
@@ -242,11 +242,19 @@
   opacity: 0; transform: scale(1.14);
   transition: opacity var(--d3) var(--e-out), transform var(--d5) var(--e-out);
 }
+/* Expanding ellipse from a per-card origin, ported from the reference's
+   environment cards. A veil that scales up from the floor is a curtain;
+   an ellipse blooming from an off-centre point is an event — and giving
+   each card its own origin means the row never fires in unison. */
 .tribe-card__veil {
   position: absolute; inset: 0; background: var(--navy);
-  transform: scaleY(0); transform-origin: 50% 100%;
-  transition: transform var(--d3) var(--e-inout);
+  clip-path: ellipse(0% 0% at var(--ox, 50%) var(--oy, 50%));
+  transition: clip-path var(--d3) var(--e-inout);
 }
+.tribe-card:nth-child(1) { --ox: 16%; --oy: 86%; }
+.tribe-card:nth-child(2) { --ox: 84%; --oy: 14%; }
+.tribe-card:nth-child(3) { --ox: 12%; --oy: 22%; }
+.tribe-card:nth-child(4) { --ox: 88%; --oy: 80%; }
 /* Lift the content above the veil by naming it. A blanket
    `> *:not(.a):not(.b)` scores (0,3,0) and silently outranked the
    `.tribe-card .arrow` rule below it, dropping the arrow back into
@@ -256,7 +264,8 @@
 .tribe-card__txt { position: relative; z-index: 2; }
 .tribe-card__jp { z-index: 2; }
 .tribe-card:hover, .tribe-card:focus-visible { transform: translateY(-6px); color: var(--carolina-hi); }
-.tribe-card:hover .tribe-card__veil, .tribe-card:focus-visible .tribe-card__veil { transform: scaleY(1); }
+.tribe-card:hover .tribe-card__veil,
+.tribe-card:focus-visible .tribe-card__veil { clip-path: ellipse(126% 126% at var(--ox, 50%) var(--oy, 50%)); }
 .tribe-card:hover .tribe-card__bg, .tribe-card:focus-visible .tribe-card__bg { opacity: 0.32; transform: none; }
 .tribe-card__idx {
   font-family: var(--f-mono); font-size: var(--t-micro);

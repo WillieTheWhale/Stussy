@@ -49,6 +49,10 @@
   --wash: rgba(237, 233, 225, 0.88);
 
   /* ── TYPE ───────────────────────────────────────────────────────── */
+  /* the handstyle mark, referenced as a mask by .sheen — declared here
+     so Vite rewrites it for `base` like any other CSS url() */
+  --mark: url("/assets/trapwhip-script.png");
+
   --f-display: "futura-cond", Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
   --f-text:    "Helvetica Neue", Helvetica, Arial, sans-serif;
   --f-mono:    ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Roboto Mono", monospace;

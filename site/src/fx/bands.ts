@@ -79,10 +79,28 @@ export const initBands = () => {
   })
   let reset: gsap.core.Tween | null = null
 
+  /* urgent state — guarded so the class only flips on an actual change,
+     not on every scroll frame (an unguarded toggle marks style dirty
+     every tick even when the value is unchanged) */
+  const bands = Array.from(byBand.keys())
+  let urgent = false
+  let calmCall: gsap.core.Tween | null = null
+  const setUrgent = (on: boolean) => {
+    if (on === urgent) return
+    urgent = on
+    for (const b of bands) b.classList.toggle('-urgent', on)
+  }
+
   onScroll(({ velocity }) => {
     const v = Math.min(Math.abs(velocity), 44)
     rateTo(1 + v * 0.34)
     reset?.kill()
     reset = gsap.delayedCall(0.6, () => rateTo(1))
+
+    if (v > 16) {
+      setUrgent(true)
+      calmCall?.kill()
+      calmCall = gsap.delayedCall(0.45, () => setUrgent(false))
+    }
   })
 }

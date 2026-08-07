@@ -31,6 +31,14 @@ const splitLetters = (host: HTMLElement) => {
           g.className = 'gl'
           g.textContent = ch
           g.style.setProperty('--gd', `${idx * STEP_LETTER}ms`)
+          /* Letters settle slightly off-true. The reference hand-kerns
+             every glyph in its headlines (100+ nth-of-type rules); this
+             is the same intent — display type that reads as set by hand
+             rather than snapped to a baseline. Kept under a degree and a
+             couple of hundredths of an em so it registers as character,
+             not as a rendering bug. */
+          g.style.setProperty('--gr', `${(Math.random() * 2 - 1).toFixed(2)}deg`)
+          g.style.setProperty('--gy', `${(Math.random() * 0.036 - 0.018).toFixed(3)}em`)
           idx++
           w.appendChild(g)
           frag.appendChild(w)

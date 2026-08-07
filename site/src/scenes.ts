@@ -157,6 +157,23 @@ const lookbookScene = () => {
 
   const distance = () => Math.max(0, track.scrollWidth - window.innerWidth + 40)
 
+  /* Entrance: the roll deals itself out before the pin takes over.
+     Shots arrive from a loose stack — falling, rotating and scaling
+     into place — so the gallery assembles rather than simply being
+     there. Fires once, on approach, well before the pin engages. */
+  gsap.fromTo(shots,
+    {
+      y: (i: number) => 70 + i * 28,
+      rotate: (i: number) => (i % 2 ? 8 : -8) - i * 0.7,
+      scale: 0.84,
+      opacity: 0,
+    },
+    {
+      y: 0, rotate: 0, scale: 1, opacity: 1,
+      duration: 0.95, ease: EASE.out, stagger: 0.08,
+      scrollTrigger: { trigger: pin, start: 'top 90%', once: true },
+    })
+
   /* textContent writes force a re-layout even when the value is
      unchanged, so the counter only writes on an actual step */
   let lastIdx = -1
@@ -184,19 +201,27 @@ const lookbookScene = () => {
     },
   })
 
+  /* The drift shares y/rotate with the entrance above, so it declares
+     its own start explicitly and defers rendering. Without
+     immediateRender:false a scrubbed fromTo paints its start state the
+     moment it is created, which would flatten the entrance's stack
+     before the user ever reaches the section. */
   shots.forEach((fig) => {
     const amt = parseFloat(fig.dataset.drift || '0')
-    gsap.to(fig, {
-      y: amt * 5.5,
-      rotate: amt * 0.1,
-      ease: EASE.linear,
-      scrollTrigger: {
-        trigger: pin,
-        start: 'top top',
-        end: () => `+=${distance()}`,
-        scrub: 1.2,
-      },
-    })
+    gsap.fromTo(fig,
+      { y: 0, rotate: 0 },
+      {
+        y: amt * 5.5,
+        rotate: amt * 0.1,
+        ease: EASE.linear,
+        immediateRender: false,
+        scrollTrigger: {
+          trigger: pin,
+          start: 'top top',
+          end: () => `+=${distance()}`,
+          scrub: 1.2,
+        },
+      })
   })
 }
 

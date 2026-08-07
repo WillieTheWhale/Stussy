@@ -3,23 +3,18 @@ import { prefersReduced } from '../core/motion'
 import { onScroll } from '../core/scroll'
 
 /* ═══════════════════════════════════════════════════════════════════
-   ATMOSPHERE — the underprint behind the page.
+   ATMOSPHERE — the world behind the page.
 
-   WHAT CHANGED AND WHY
-   The previous build drew this on a 2D canvas: ~1500 text instances,
-   each measured and re-filled with ctx.fillText every single frame, on
-   the main thread. Profiled at 6× CPU throttle that was 80ms frames —
-   12fps, 100% janked, 17s of long tasks over one scroll pass.
+   Three depths, each parallaxing at its own rate:
 
-   Here each lane is ONE element holding two copies of its phrase set,
-   moved by a CSS keyframe that translates it exactly -50%. Chrome runs
-   transform keyframes on the compositor, so the streaming costs zero
-   main-thread time: no rAF loop, no ticker, no per-frame JS at all.
-   Scroll response is a single quickTo on the container.
+     FAR   typeset lanes streaming sideways (the underprint)
+     MID   a drift field of hand-drawn marks, slowly breathing
+     NEAR  occasional fast crossings that cut the whole screen
 
-   Density is art direction, not maximisation. Lanes are sparse and
-   faint; paper sections lay a translucent wash over the top so copy
-   sits on a surface. The old layer was so dense it was illegible.
+   Everything streams on CSS keyframes, which Chrome runs on the
+   compositor — no rAF, no ticker, no per-frame JS. The only main-thread
+   work is one transform per depth on scroll, so adding a whole second
+   layer of marks costs essentially nothing over the previous build.
    ═══════════════════════════════════════════════════════════════════ */
 
 const PHRASES = [
@@ -29,30 +24,37 @@ const PHRASES = [
   'チャペルヒル店', 'Sold Out Forever', 'International Tribe',
 ]
 
+/* The hand-drawn rasters keep their charm; the vector marks add range
+   and tint through currentColor. Mixing the two is what stops the
+   drift field reading as one repeated sticker. */
 const DOODLES = ['8ball', 'crown', 'dice', 'ram']
+const MARKS = [
+  'crown', 'sparkle', 'spade', 'flame', 'skull', 'chain',
+  'wave', 'sun', 'dice', 'eightball', 'ball', 'star4',
+]
 
 /* Vite rewrites absolute asset paths in HTML and CSS for `base`, but NOT
    strings built at runtime — a bare "/assets/…" here resolves to the
    domain root and 404s on the /Stussy/ Pages deploy. */
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`.replace(/\/{2,}/g, '/')
 
-/* Lane tiers. Big lanes are rare and faint; small lanes carry the
-   density. Tints are budgeted — most of the page is ink. */
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
 interface Tier { fs: [number, number]; op: [number, number]; weight: number; dur: [number, number] }
 const TIERS: Tier[] = [
-  { fs: [84, 124], op: [0.028, 0.040], weight: 800, dur: [150, 210] }, // headline ghosts
-  { fs: [38, 54],  op: [0.032, 0.046], weight: 800, dur: [110, 160] }, // mid
-  { fs: [18, 25],  op: [0.045, 0.062], weight: 500, dur: [80,  120] }, // fine print
+  { fs: [84, 124], op: [0.028, 0.040], weight: 800, dur: [150, 210] },
+  { fs: [38, 54],  op: [0.032, 0.046], weight: 800, dur: [110, 160] },
+  { fs: [18, 25],  op: [0.045, 0.062], weight: 500, dur: [80,  120] },
 ]
 
 /* Tint budget. Ink carries the field; the brand colours are seasoning.
    Saturated hues read heavier than ink at the same alpha, so their
    share is deliberately small. */
 const TINTS: Array<[string, number]> = [
-  ['16, 15, 13', 0.62],    // ink — the majority
-  ['75, 156, 211', 0.22],  // carolina
-  ['255, 74, 23', 0.09],   // flare
-  ['240, 180, 41', 0.07],  // gold
+  ['16, 15, 13', 0.62],
+  ['75, 156, 211', 0.22],
+  ['255, 74, 23', 0.09],
+  ['240, 180, 41', 0.07],
 ]
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
@@ -67,6 +69,16 @@ const pickTint = () => {
   return TINTS[0][0]
 }
 
+const markSvg = (name: string) => {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 100 100')
+  svg.setAttribute('aria-hidden', 'true')
+  const use = document.createElementNS(SVG_NS, 'use')
+  use.setAttribute('href', `#mk-${name}`)
+  svg.appendChild(use)
+  return svg
+}
+
 export interface Atmosphere {
   start: () => void
   stop: () => void
@@ -76,26 +88,36 @@ export const initAtmosphere = (): Atmosphere | null => {
   const root = document.getElementById('atmos')
   if (!root || prefersReduced()) return null
 
-  const LANES = window.innerWidth < 900 ? 10 : 16
   const vw = window.innerWidth
+  const narrow = vw < 900
+  const LANES = narrow ? 10 : 16
+  const FIELD = narrow ? 7 : 13
 
   /* The tier sizes are tuned against a ~1440px stage. Left absolute, a
      120px headline ghost is a third of a phone screen wide and stops
      being atmosphere — it becomes the content. */
   const scale = Math.min(1, Math.max(0.42, vw / 1440))
 
-  const frag = document.createDocumentFragment()
+  const layer = (depth: string) => {
+    const el = document.createElement('div')
+    el.className = 'atmos__layer'
+    el.dataset.depth = depth
+    root.appendChild(el)
+    return el
+  }
+  const far = layer('far')
+  const mid = layer('mid')
+  const near = layer('near')
 
+  /* ── FAR: typeset lanes ─────────────────────────────────────────── */
+  const farFrag = document.createDocumentFragment()
   for (let i = 0; i < LANES; i++) {
-    /* one big lane in every four, so the rhythm reads as designed
-       rather than as uniform stripes */
     const tier = TIERS[i % 4 === 1 ? 0 : i % 2 === 0 ? 2 : 1]
     const fs = rand(tier.fs[0], tier.fs[1]) * scale
     const lane = document.createElement('div')
     lane.className = 'atmos__lane'
 
-    const y = (i / LANES) * 108 - 4 + rand(-1.6, 1.6)
-    lane.style.setProperty('--y', `${y}vh`)
+    lane.style.setProperty('--y', `${(i / LANES) * 108 - 4 + rand(-1.6, 1.6)}vh`)
     lane.style.setProperty('--fs', `${fs.toFixed(1)}px`)
     lane.style.setProperty('--fw', String(tier.weight))
     lane.style.setProperty('--c', `rgba(${pickTint()}, ${rand(tier.op[0], tier.op[1]).toFixed(3)})`)
@@ -119,11 +141,41 @@ export const initAtmosphere = (): Atmosphere | null => {
     }
     lane.appendChild(unit)
     lane.appendChild(unit.cloneNode(true))
-    frag.appendChild(lane)
+    farFrag.appendChild(lane)
   }
+  far.appendChild(farFrag)
 
-  /* drifting doodles — punctuation, not wallpaper */
-  const charas: HTMLElement[] = DOODLES.map((name) => {
+  /* ── MID: the drift field ───────────────────────────────────────
+     Marks scattered on a jittered grid so they never clump, each
+     breathing on its own clock. One composited keyframe apiece. */
+  const midFrag = document.createDocumentFragment()
+  const cols = narrow ? 2 : 4
+  const bag = [...MARKS].sort(() => Math.random() - 0.5)
+  for (let i = 0; i < FIELD; i++) {
+    const el = document.createElement('div')
+    el.className = 'atmos__mark'
+    const col = i % cols
+    const row = Math.floor(i / cols)
+    el.style.setProperty('--x', `${(col / cols) * 100 + rand(2, 16)}vw`)
+    el.style.setProperty('--y', `${(row / Math.ceil(FIELD / cols)) * 96 + rand(1, 14)}vh`)
+    el.style.setProperty('--w', `${(rand(4.6, 11) * (narrow ? 1.35 : 1)).toFixed(2)}vw`)
+    el.style.setProperty('--rot', `${rand(-26, 26).toFixed(1)}deg`)
+    el.style.setProperty('--sway', `${rand(9, 22).toFixed(1)}px`)
+    el.style.setProperty('--spin', `${rand(-11, 11).toFixed(1)}deg`)
+    el.style.setProperty('--dur', `${rand(11, 24).toFixed(1)}s`)
+    el.style.setProperty('--delay', `${rand(-14, 0).toFixed(1)}s`)
+    el.style.setProperty('--c', `rgba(${pickTint()}, ${rand(0.085, 0.16).toFixed(3)})`)
+    el.appendChild(markSvg(bag[i % bag.length]))
+    midFrag.appendChild(el)
+  }
+  mid.appendChild(midFrag)
+
+  /* ── NEAR: crossings ────────────────────────────────────────────
+     Mixed media on purpose — the four hand-drawn rasters plus a few
+     vector marks, so a crossing is never predictable. */
+  const nearFrag = document.createDocumentFragment()
+  const crossers: HTMLElement[] = []
+  for (const name of DOODLES) {
     const el = document.createElement('div')
     el.className = 'atmos__chara'
     const img = document.createElement('img')
@@ -133,40 +185,50 @@ export const initAtmosphere = (): Atmosphere | null => {
     img.width = 520
     img.height = 520
     el.appendChild(img)
-    frag.appendChild(el)
-    return el
+    nearFrag.appendChild(el)
+    crossers.push(el)
+  }
+  for (const name of ['sparkle', 'flame', 'spade', 'skull']) {
+    const el = document.createElement('div')
+    el.className = 'atmos__chara -vector'
+    el.appendChild(markSvg(name))
+    nearFrag.appendChild(el)
+    crossers.push(el)
+  }
+  near.appendChild(nearFrag)
+
+  /* ── scroll response ────────────────────────────────────────────
+     One transform per depth. Because the rates differ, the field
+     separates into planes as you scroll instead of sliding as a slab. */
+  const rates: Array<[HTMLElement, number]> = [[far, 1], [mid, 2.3], [near, 3.4]]
+  const setters = rates.map(([el, rate]) => {
+    const to = gsap.quickTo(el, 'x', { duration: 0.6, ease: 'power3.out' })
+    return (v: number) => to(gsap.utils.clamp(-90, 90, v * rate))
   })
-
-  root.appendChild(frag)
-
-  /* ── scroll response ───────────────────────────────────────────
-     One transform on the container: the whole field leans into the
-     scroll and eases back. Two composited properties, no layout. */
-  const drift = { x: 0 }
-  const driftTo = gsap.quickTo(root, 'x', { duration: 0.55, ease: 'power3.out' })
   let settle: gsap.core.Tween | null = null
 
   onScroll(({ velocity }) => {
     if (!running) return
-    drift.x = gsap.utils.clamp(-70, 70, -velocity * 2.4)
-    driftTo(drift.x)
+    const v = -velocity * 1.1
+    for (const set of setters) set(v)
     settle?.kill()
-    settle = gsap.delayedCall(0.25, () => driftTo(0))
+    settle = gsap.delayedCall(0.25, () => { for (const set of setters) set(0) })
   })
 
-  /* ── chara scheduler ───────────────────────────────────────────── */
-  let charaCall: gsap.core.Tween | null = null
+  /* ── crossing scheduler ─────────────────────────────────────────── */
+  let call: gsap.core.Tween | null = null
   let cursor = 0
-  const scheduleChara = (first = false) => {
-    charaCall = gsap.delayedCall(first ? 5 : rand(7, 13), () => {
-      const el = charas[cursor++ % charas.length]
+  const scheduleCross = (first = false) => {
+    call = gsap.delayedCall(first ? 4 : rand(5, 10), () => {
+      const el = crossers[cursor++ % crossers.length]
       el.classList.remove('-run')
       void el.offsetWidth /* restart the keyframe */
-      el.style.setProperty('--y', `${rand(8, 78)}vh`)
-      el.style.setProperty('--w', `${rand(9, 17).toFixed(1)}vw`)
-      el.style.setProperty('--dur', `${rand(11, 18).toFixed(1)}s`)
+      el.style.setProperty('--y', `${rand(6, 80)}vh`)
+      el.style.setProperty('--w', `${rand(8, 17).toFixed(1)}vw`)
+      el.style.setProperty('--dur', `${rand(10, 17).toFixed(1)}s`)
+      el.style.setProperty('--tilt', `${rand(-14, 14).toFixed(1)}deg`)
       el.classList.add('-run')
-      scheduleChara()
+      scheduleCross()
     })
   }
 
@@ -176,11 +238,11 @@ export const initAtmosphere = (): Atmosphere | null => {
     start: () => {
       running = true
       root.classList.add('-ready')
-      scheduleChara(true)
+      scheduleCross(true)
     },
     stop: () => {
       running = false
-      charaCall?.kill()
+      call?.kill()
       root.style.setProperty('--atmos-play', 'paused')
     },
   }

@@ -16,6 +16,10 @@ const waitFor = (img: HTMLImageElement | null) =>
     img.addEventListener('error', () => res(), { once: true })
   })
 
+/* The hero mark is a CSS mask on a <span>, not an <img>, so it has no
+   DOM node to await — decode it directly instead. */
+const waitForUrl = (url: string) => waitFor(Object.assign(new Image(), { src: url }))
+
 export const runLoader = (onReveal: () => void) => {
   const loader = document.getElementById('loader')
   const count = document.getElementById('loader-count')
@@ -55,9 +59,11 @@ export const runLoader = (onReveal: () => void) => {
      always moving but never lies about being finished */
   const crawl = gsap.to(p, { v: 88, duration: 2.6, ease: 'power2.out', onUpdate: paint })
 
+  const markUrl = `${import.meta.env.BASE_URL}assets/trapwhip-script.png`.replace(/\/{2,}/g, '/')
+
   const ready = Promise.all([
     document.fonts ? document.fonts.ready : Promise.resolve(),
-    waitFor(document.getElementById('hero-mark') as HTMLImageElement),
+    waitForUrl(markUrl),
     waitFor(document.querySelector('.hero__mascot img')),
     new Promise<void>((res) => gsap.delayedCall(1.1, res)),
   ])

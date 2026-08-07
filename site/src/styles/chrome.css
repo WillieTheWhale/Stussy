@@ -22,6 +22,9 @@
   opacity: 0; transition: opacity var(--d5) var(--e-out);
 }
 .atmos.-ready { opacity: 1; }
+/* three planes, each parallaxing at its own rate (see fx/atmosphere.ts)
+   so the field separates into depth on scroll instead of sliding flat */
+.atmos__layer { position: absolute; inset: 0; will-change: transform; }
 
 .atmos__lane {
   position: absolute; left: 0; top: var(--y, 0);
@@ -40,22 +43,43 @@
 @keyframes atmos-run   { from { transform: translate3d(0, 0, 0); }    to { transform: translate3d(-50%, 0, 0); } }
 @keyframes atmos-run-r { from { transform: translate3d(-50%, 0, 0); } to { transform: translate3d(0, 0, 0); } }
 
-/* drifting doodles — one composited transform each, long gaps between
-   crossings so they read as punctuation rather than wallpaper */
+/* ── MID: the drift field ─────────────────────────────────────────
+   Marks that sit in the world and breathe. One composited keyframe
+   each, all of them off their own clock via a negative delay so the
+   field is already mid-motion on first paint rather than starting in
+   lockstep. */
+.atmos__mark {
+  position: absolute; left: var(--x, 10vw); top: var(--y, 20vh);
+  width: var(--w, 7vw); color: var(--c, rgba(16, 15, 13, 0.12));
+  will-change: transform;
+  animation: atmos-breathe var(--dur, 16s) ease-in-out var(--delay, 0s) infinite alternate;
+  animation-play-state: var(--atmos-play, running);
+}
+.atmos__mark svg { width: 100%; height: auto; display: block; }
+@keyframes atmos-breathe {
+  from { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
+  to   { transform: translate3d(var(--sway, 14px), calc(var(--sway, 14px) * -0.75), 0)
+                    rotate(calc(var(--rot, 0deg) + var(--spin, 8deg))); }
+}
+
+/* ── NEAR: crossings ──────────────────────────────────────────────
+   Long gaps between them so they read as punctuation, not wallpaper. */
 .atmos__chara {
   position: absolute; top: var(--y, 20vh); left: 0;
   width: var(--w, 16vw); opacity: 0;
   will-change: transform;
 }
 .atmos__chara img { width: 100%; opacity: 0.13; }
+.atmos__chara.-vector { color: rgba(16, 15, 13, 0.14); }
+.atmos__chara.-vector svg { width: 100%; height: auto; display: block; }
 .atmos__chara.-run {
   animation: atmos-cross var(--dur, 13s) linear forwards;
 }
 @keyframes atmos-cross {
-  0%   { transform: translate3d(100vw, 0, 0) rotate(-6deg); opacity: 0; }
+  0%   { transform: translate3d(105vw, 0, 0) rotate(calc(var(--tilt, 6deg) * -1)); opacity: 0; }
   8%   { opacity: 1; }
   92%  { opacity: 1; }
-  100% { transform: translate3d(-30vw, 0, 0) rotate(6deg); opacity: 0; }
+  100% { transform: translate3d(-32vw, 0, 0) rotate(var(--tilt, 6deg)); opacity: 0; }
 }
 
 /* ── GRAIN ────────────────────────────────────────────────────────
@@ -106,17 +130,27 @@
 .curtain {
   position: fixed; inset: 0; z-index: var(--z-curtain);
   pointer-events: none; visibility: hidden;
-  display: grid; grid-template-columns: repeat(var(--slats, 12), 1fr);
+  display: grid; place-items: center;
 }
 .curtain.-active { visibility: visible; }
-.curtain i {
-  display: block; background: var(--ink);
-  transform: scaleY(0); transform-origin: 50% 100%;
-  will-change: transform;
+.curtain__lines {
+  position: absolute; inset: 0; width: 100%; height: 100%;
 }
-.curtain[data-tone="carolina"] i { background: var(--carolina); }
-.curtain[data-tone="flare"] i    { background: var(--flare); }
-.curtain[data-tone="navy"] i     { background: var(--navy); }
+.curtain__lines g { fill: var(--ink); }
+.curtain[data-tone="flare"]    .curtain__lines g { fill: var(--flare); }
+.curtain[data-tone="carolina"] .curtain__lines g { fill: var(--carolina); }
+.curtain[data-tone="navy"]     .curtain__lines g { fill: var(--navy); }
+.curtain[data-tone="ink"]      .curtain__lines g { fill: var(--ink); }
+
+/* the wordmark stamps while the screen is covered — inverted on the
+   dark tones so it reads on any of the four */
+.curtain__stamp {
+  position: relative; z-index: 1;
+  width: min(38vw, 420px); height: auto; opacity: 0;
+  will-change: transform, opacity;
+}
+.curtain[data-tone="ink"]  .curtain__stamp,
+.curtain[data-tone="navy"] .curtain__stamp { filter: invert(1); }
 
 /* ── HEADER ───────────────────────────────────────────────────────── */
 .header {
