@@ -12,6 +12,23 @@
 }
 .sec--flush { padding-block-end: 0; }
 
+/* ── SECTION DECO ─────────────────────────────────────────────────
+   Background marks living inside the solid-colour sections, where the
+   page-level atmosphere cannot reach. Built in fx/deco.ts. */
+.sec__deco {
+  position: absolute; inset: 0; z-index: 0;
+  pointer-events: none; overflow: hidden; contain: paint;
+}
+.sec__deco-mark {
+  position: absolute; left: var(--x, 50%); top: var(--y, 50%);
+  width: var(--w, 12vw); color: var(--on-surface);
+  opacity: 0.07; rotate: var(--rot, 0deg);
+  will-change: transform;
+}
+.sec__deco-mark svg { width: 100%; height: auto; display: block; }
+/* the section's own content has to clear the deco layer */
+.sec > *:not(.sec__deco) { position: relative; z-index: 1; }
+
 /* ── SECTION HEAD ─────────────────────────────────────────────────
    Rule, index, display pair, meta. No overflow:hidden on the head
    itself — the previous build clipped its own titles because the head
@@ -200,9 +217,13 @@
    The band is a TRANSFORMED child, not an animated background-position:
    background-position repaints the whole element every frame, and this
    element is ~720px wide. A translating child stays on the compositor. */
+/* The base colour is a variable, not a literal: .sheen and any user of
+   it (.loader__mark) tie on specificity, and whichever file imports
+   later would otherwise silently win — which painted the loader mark
+   ink-on-ink. */
 .sheen {
   position: relative; overflow: hidden;
-  background: var(--ink);
+  background: var(--sheen-base, var(--ink));
   -webkit-mask: var(--mark) no-repeat center / contain;
   mask: var(--mark) no-repeat center / contain;
 }

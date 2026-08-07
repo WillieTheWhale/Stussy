@@ -23,17 +23,32 @@ import { EASE, DUR, onDesktop, prefersReduced } from './core/motion'
 export const prepareScenes = () => {
   if (prefersReduced()) return
   gsap.set('[data-hero]', { opacity: 0, y: 44 })
-  gsap.set('#hero-mark', { opacity: 0, y: 60, rotate: -7 })
+  gsap.set('#hero-mark', { opacity: 0, y: 60, rotate: -7, scale: 1.08 })
   gsap.set('[data-hero-fade]', { opacity: 0 })
+  gsap.set('.hero__eyebrow .ln', { scaleX: 0, transformOrigin: '0 50%' })
+  gsap.set('.hero__mascot .badge', { opacity: 0, scale: 0.4, rotate: -90 })
+  gsap.set('.hero__side', { opacity: 0, y: 40 })
 }
 
+/* The curtain lifts onto a page that then assembles itself. Beats are
+   deliberately overlapped rather than sequential — a strict queue reads
+   as a slideshow; overlapping reads as one movement. */
 export const heroIntro = () => {
   if (prefersReduced()) return
+
   const tl = gsap.timeline({ defaults: { ease: EASE.out } })
-  tl.to('#hero-mark', { opacity: 1, y: 0, rotate: -2, duration: 1.15 }, 0)
-    .to('.hero__mascot[data-hero]', { opacity: 1, y: 0, duration: 1.3, ease: EASE.snap }, 0.16)
-    .to('.hero__tag[data-hero]', { opacity: 1, y: 0, duration: DUR.d4 }, 0.42)
-    .to('[data-hero-fade]', { opacity: 1, duration: DUR.d4, stagger: 0.1 }, 0.52)
+
+  tl.to('#hero-mark', { opacity: 1, y: 0, rotate: -2, scale: 1, duration: 1.25 }, 0)
+    /* masthead rules draw out from the labels */
+    .to('.hero__eyebrow .ln', { scaleX: 1, duration: 1.1, stagger: 0.09 }, 0.18)
+    .to('.hero__mascot[data-hero]', { opacity: 1, y: 0, duration: 1.35, ease: EASE.snap }, 0.2)
+    /* the badge unwinds into place rather than fading on */
+    .to('.hero__mascot .badge', {
+      opacity: 1, scale: 1, rotate: 0, duration: 1.1, ease: EASE.snap,
+    }, 0.62)
+    .to('.hero__tag[data-hero]', { opacity: 1, y: 0, duration: DUR.d4 }, 0.5)
+    .to('[data-hero-fade]', { opacity: 1, duration: DUR.d4, stagger: 0.1 }, 0.56)
+    .to('.hero__side', { opacity: 0.55, y: 0, duration: DUR.d4 }, 0.9)
 
   /* the mascot keeps breathing after the intro lands */
   gsap.to('.hero__mascot', {

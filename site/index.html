@@ -127,8 +127,20 @@
 
   <!-- ══ LOADER ══════════════════════════════════════════════════ -->
   <div class="loader" id="loader">
+    <!-- marks orbiting behind the mark while it loads, then scattering
+         outward as the field lifts -->
+    <div class="loader__field" id="loader-field" aria-hidden="true">
+      <span style="--x:12%;--y:18%;--w:7vw;--r:-18deg;--d:0s"><svg viewBox="0 0 100 100"><use href="#mk-crown"/></svg></span>
+      <span style="--x:82%;--y:14%;--w:5.5vw;--r:14deg;--d:-2.4s"><svg viewBox="0 0 100 100"><use href="#mk-sparkle"/></svg></span>
+      <span style="--x:8%;--y:72%;--w:6.5vw;--r:11deg;--d:-4.1s"><svg viewBox="0 0 100 100"><use href="#mk-spade"/></svg></span>
+      <span style="--x:88%;--y:68%;--w:6vw;--r:-13deg;--d:-1.3s"><svg viewBox="0 0 100 100"><use href="#mk-flame"/></svg></span>
+      <span style="--x:46%;--y:8%;--w:4.5vw;--r:22deg;--d:-3.2s"><svg viewBox="0 0 100 100"><use href="#mk-star4"/></svg></span>
+      <span style="--x:66%;--y:84%;--w:5vw;--r:-7deg;--d:-5.5s"><svg viewBox="0 0 100 100"><use href="#mk-dice"/></svg></span>
+      <span style="--x:26%;--y:88%;--w:5.8vw;--r:17deg;--d:-0.8s"><svg viewBox="0 0 100 100"><use href="#mk-ball"/></svg></span>
+      <span style="--x:94%;--y:40%;--w:4.8vw;--r:-24deg;--d:-6.2s"><svg viewBox="0 0 100 100"><use href="#mk-chain"/></svg></span>
+    </div>
     <div class="loader__inner">
-      <img class="loader__mark" id="loader-mark" src="/assets/trapwhip-script.png" alt="" width="735" height="506">
+      <span class="loader__mark sheen" id="loader-mark"><i></i></span>
       <div class="loader__bar"><i id="loader-fill"></i></div>
       <p class="loader__meta">
         <span>Chapter No. 26</span>

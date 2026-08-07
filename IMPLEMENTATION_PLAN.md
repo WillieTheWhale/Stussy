@@ -1,7 +1,65 @@
 # STÜSSY CHAPEL HILL — Implementation Plan
 
 > Living document. Updated after every Q&A round with the user.
-> **Status: BUILT v7 (2026-08-07) — running at `http://localhost:5173/Stussy/` (`Stussy/site/`, `npm run dev`).**
+> **Status: BUILT v8 (2026-08-07) — running at `http://localhost:5173/Stussy/` (`Stussy/site/`, `npm run dev`).**
+
+---
+
+## 0. v8 — CREATIVE RESTORATION (2026-08-07)
+
+User feedback on v7: the performance and bug work landed, but the site had been
+dragged toward generic. The nav transition in particular had been "simplified".
+Brief: get back to the reference's level of choreography and detail, no new copy
+anywhere, kill the coordinate readouts, and stop shipping square images.
+
+**Read the reference properly this time.** Grepping `main.css` for the actual
+mechanics turned up the vocabulary v7 had flattened:
+
+- `clip-path: ellipse(0% 0% at X% Y%)` → `ellipse(45% 44% at X% Y%)` — the
+  environment cards bloom from a *per-card origin*, not a uniform wipe.
+- `clip-path: inset(0 round 1.28vw)` everywhere — no image is ever a hard rect.
+- `kf-logo-gradient` — a colour band scrolling through the wordmark.
+- `kf-marquee-urgent` — the tape reacts to fast scrolling.
+- `.p-nav__list ... transition-delay: .27s/.295s/.32s/.345s/.37s` — reveals
+  staged at 25ms increments, and 100+ `nth-of-type` rules hand-kerning
+  individual glyphs. The detail *is* the design.
+
+**Shipped in v8:**
+
+- **Transition rebuilt** as the gooey stripe wipe: 26 randomised-width rects,
+  each with its own in/out power ease and 0–160ms delay, fused by a blur +
+  contrast matrix so the leading edge reads as one liquid front rather than
+  sliding bars. Wordmark stamps while covered. (The slat curtain in v7 was the
+  specific regression called out.)
+- **No square frames.** Arch, oval, leaf and pill shapes with generous rounding,
+  each carrying an offset colour plate that snaps home on hover. The plate is a
+  hard-edged `box-shadow` — it paints outside the frame (a child element is
+  eaten by `overflow:hidden`) and follows every border-radius for free.
+- **Background is now three parallax depths**, not one flat layer: typeset lanes,
+  a breathing drift field, and fast crossings. Plus a new hand-drawn SVG mark
+  library (crown, sparkle, spade, flame, skull, chain, wave, sun, dice, 8-ball,
+  ball, star) mixed with the existing rasters.
+- **Solid-colour sections got their own background life** (`fx/deco.ts`). The
+  atmosphere sits *behind* the page, so lookbook/tribe/store — half the site —
+  had nothing behind their content. Each now carries its own cast of large
+  low-contrast marks on alternating parallax rates.
+- **Signatures ported:** per-card ellipse hover, colour sheen through the masked
+  wordmark, marquee urgent state, per-glyph settle offsets, section heads that
+  assemble (rule draws out, kicker staggers, ghost numeral swings in), lookbook
+  dealing itself out of a loose stack, richer hero intro with overlapped beats.
+- **Removed:** lat/long readouts from header, story meta and lookbook captions.
+  No copy was added anywhere.
+
+**Perf held** across the whole pass — 6× CPU throttle, full scroll sweep:
+8.3ms median frame, 0% janked frames, 0 long tasks. Everything added streams on
+CSS keyframes (compositor) or is one transform per scroll event.
+
+**Bugs caught during the pass:** curtain rects were authored in a 0–100 space
+against a 1000-unit viewBox; the sheen band's percentage transform resolved
+against the wrong box and travelled off-canvas; `.sheen` and `.loader__mark`
+tied on specificity so the loader mark painted ink-on-ink; and the lookbook
+entrance and drift scrub both owned `y`/`rotate` on the same nodes until the
+drift was given an explicit start and `immediateRender: false`.
 
 ---
 

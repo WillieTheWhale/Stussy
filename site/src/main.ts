@@ -4,6 +4,7 @@ import { initScroll, scrollTo } from './core/scroll'
 import { runLoader } from './fx/loader'
 import { Curtain } from './fx/curtain'
 import { initAtmosphere } from './fx/atmosphere'
+import { initDeco } from './fx/deco'
 import { initBands } from './fx/bands'
 import { initMedia } from './fx/media'
 import { initCursor } from './fx/cursor'
@@ -28,6 +29,7 @@ const boot = () => {
   const atmosphere = initAtmosphere()
 
   initChrome()
+  initDeco()
   initBands()
   initMedia()
   initCursor()
