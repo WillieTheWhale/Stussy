@@ -186,7 +186,8 @@
 .media__frame.-live .media__img { will-change: transform; }
 .media__cap {
   display: flex; align-items: baseline; gap: var(--s3);
-  margin-block-start: var(--s4);
+  /* clears the plate, which can hang below the frame by --plate-y */
+  margin-block-start: calc(var(--s4) + max(0px, var(--plate-y, 0px)));
   font-family: var(--f-mono); font-size: var(--t-label);
   letter-spacing: var(--tr-wide); text-transform: uppercase;
 }
