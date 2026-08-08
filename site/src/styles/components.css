@@ -285,9 +285,17 @@
 }
 [data-reveal].-in { opacity: 1; transform: none; }
 
-/* letter roll — the wrapper clips, the glyph rides up */
-.glw { display: inline-block; overflow: hidden; vertical-align: bottom; padding-block-end: 0.06em; margin-block-end: -0.06em; }
-.gl  { display: inline-block; transform: translate3d(0, 108%, 0) rotate(3deg); will-change: transform; }
+/* letter roll — the wrapper clips, the glyph rides up. The clip window
+   is wider and taller than the glyph box on purpose: this Futura cut has
+   negative side bearings (ink starts up to ~0.05em left of the origin),
+   italic caps overhang the advance on the right, and -webkit-text-stroke
+   paints half its width outside the outline — a box-tight wrapper sliced
+   all of it off. Padding opens the window; the matching negative margins
+   keep every glyph's layout position pixel-identical. */
+.glw { display: inline-block; overflow: hidden; vertical-align: bottom; padding: 0.05em 0.08em 0.2em; margin: -0.05em -0.08em -0.2em; }
+/* 135%, not ~108%: the padded window reaches 0.2em below the glyph box,
+   so a smaller initial offset would leave the glyph's crown peeking in */
+.gl  { display: inline-block; transform: translate3d(0, 135%, 0) rotate(3deg); will-change: transform; }
 /* settles to a per-glyph offset, not to zero — see reveals.ts */
 .-in .gl {
   transform: translate3d(0, var(--gy, 0), 0) rotate(var(--gr, 0deg));

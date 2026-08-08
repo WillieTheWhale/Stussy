@@ -78,7 +78,11 @@
 }
 
 /* ── STORY ────────────────────────────────────────────────────────── */
-.story__pin { position: relative; overflow: clip; padding-block: var(--s7); }
+/* overflow: clip stops the scrubbed ghost spilling sideways, but it also
+   sliced the ghost's crown (it sits at top:-6%). The clip margin re-opens
+   just the off-screen bleed: the pin is full-bleed, so the extra margin
+   only ever reveals area that was already inside the viewport. */
+.story__pin { position: relative; overflow: clip; overflow-clip-margin: var(--s9); padding-block: var(--s7); }
 .story__ghost {
   position: absolute; top: -6%; left: -6%; z-index: 0;
   font-family: var(--f-display); font-weight: 800; font-style: italic;
