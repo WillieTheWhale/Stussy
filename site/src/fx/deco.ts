@@ -15,14 +15,20 @@ import { EASE, prefersReduced } from '../core/motion'
    mark landing dead-centre or at a tidy interval reads as a pattern.
    ═══════════════════════════════════════════════════════════════════ */
 
-const SVG_NS = 'http://www.w3.org/2000/svg'
+/* Real Stüssy print artwork (see qa/extract_marks.mjs). Aspect ratios
+   differ enormously, so each entry carries its own. */
+const AR: Record<string, number> = {
+  ball: 620 / 528, crown: 534 / 206, dice: 322 / 670,
+  skull: 272 / 302, sheet: 768 / 1038,
+}
 
-/* Per-section casts. Each section gets marks that belong to it rather
-   than a shared random draw, so the sections stay distinguishable. */
+/* Per-section casts. Each section draws from its own set so the three
+   solid fields stay distinguishable rather than sharing one soup. The
+   full skulls composition appears once per section as the large piece. */
 const CASTS: Record<string, string[]> = {
-  lookbook: ['sun', 'sparkle', 'wave', 'star4', 'flame'],
-  tribe: ['crown', 'chain', 'spade', 'sparkle', 'skull'],
-  store: ['eightball', 'dice', 'ball', 'crown', 'star4'],
+  lookbook: ['sheet', 'ball', 'skull', 'crown', 'dice'],
+  tribe: ['crown', 'sheet', 'dice', 'ball', 'skull'],
+  store: ['ball', 'dice', 'sheet', 'crown', 'skull'],
 }
 
 /* x/y in %, size in vw, rotation in deg — hand-placed so nothing lands
@@ -57,12 +63,17 @@ export const initDeco = () => {
       el.style.setProperty('--w', `${(w * rand(0.85, 1.2)).toFixed(1)}vw`)
       el.style.setProperty('--rot', `${rot + rand(-8, 8)}deg`)
 
-      const svg = document.createElementNS(SVG_NS, 'svg')
-      svg.setAttribute('viewBox', '0 0 100 100')
-      const use = document.createElementNS(SVG_NS, 'use')
-      use.setAttribute('href', `#mk-${name}`)
-      svg.appendChild(use)
-      el.appendChild(svg)
+      el.dataset.mark = name
+      el.style.setProperty('--ar', String(AR[name] ?? 1))
+      /* the sheet is the hero piece — give it real presence */
+      if (name === 'sheet') el.style.setProperty('--w', `${(w * 2.4).toFixed(1)}vw`)
+
+      const img = document.createElement('img')
+      img.src = `${import.meta.env.BASE_URL}assets/marks/${name}.webp`.replace(/\/{2,}/g, '/')
+      img.alt = ''
+      img.loading = 'lazy'
+      img.decoding = 'async'
+      el.appendChild(img)
       layer.appendChild(el)
     })
 

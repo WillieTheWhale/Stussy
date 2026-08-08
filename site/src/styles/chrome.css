@@ -50,12 +50,13 @@
    lockstep. */
 .atmos__mark {
   position: absolute; left: var(--x, 10vw); top: var(--y, 20vh);
-  width: var(--w, 7vw); color: var(--c, rgba(16, 15, 13, 0.12));
+  width: var(--w, 7vw); aspect-ratio: var(--ar, 1);
+  opacity: var(--op, 0.14);
   will-change: transform;
   animation: atmos-breathe var(--dur, 16s) ease-in-out var(--delay, 0s) infinite alternate;
   animation-play-state: var(--atmos-play, running);
 }
-.atmos__mark svg { width: 100%; height: auto; display: block; }
+.atmos__mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
 @keyframes atmos-breathe {
   from { transform: translate3d(0, 0, 0) rotate(var(--rot, 0deg)); }
   to   { transform: translate3d(var(--sway, 14px), calc(var(--sway, 14px) * -0.75), 0)
@@ -66,12 +67,10 @@
    Long gaps between them so they read as punctuation, not wallpaper. */
 .atmos__chara {
   position: absolute; top: var(--y, 20vh); left: 0;
-  width: var(--w, 16vw); opacity: 0;
+  width: var(--w, 16vw); aspect-ratio: var(--ar, 1); opacity: 0;
   will-change: transform;
 }
-.atmos__chara img { width: 100%; opacity: 0.13; }
-.atmos__chara.-vector { color: rgba(16, 15, 13, 0.14); }
-.atmos__chara.-vector svg { width: 100%; height: auto; display: block; }
+.atmos__chara img { width: 100%; height: 100%; object-fit: contain; opacity: 0.15; display: block; }
 .atmos__chara.-run {
   animation: atmos-cross var(--dur, 13s) linear forwards;
 }
@@ -111,11 +110,15 @@
 .loader__field { position: absolute; inset: 0; overflow: hidden; contain: strict; }
 .loader__field span {
   position: absolute; left: var(--x); top: var(--y);
-  width: var(--w); color: rgba(237, 233, 225, 0.13);
+  width: var(--w); aspect-ratio: var(--ar, 1);
   rotate: var(--r, 0deg); will-change: transform;
   animation: loader-orbit 9s ease-in-out var(--d, 0s) infinite alternate;
 }
-.loader__field svg { width: 100%; height: auto; display: block; }
+/* black ink on an ink field — invert to read, then hold it well back */
+.loader__field img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  filter: invert(1); opacity: 0.16;
+}
 @keyframes loader-orbit {
   from { transform: translate3d(0, 0, 0) scale(0.94); }
   to   { transform: translate3d(14px, -20px, 0) scale(1.06); }

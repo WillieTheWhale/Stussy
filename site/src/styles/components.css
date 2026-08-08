@@ -21,11 +21,18 @@
 }
 .sec__deco-mark {
   position: absolute; left: var(--x, 50%); top: var(--y, 50%);
-  width: var(--w, 12vw); color: var(--on-surface);
-  opacity: 0.07; rotate: var(--rot, 0deg);
+  width: var(--w, 12vw); aspect-ratio: var(--ar, 1);
+  opacity: 0.10; rotate: var(--rot, 0deg);
   will-change: transform;
 }
-.sec__deco-mark svg { width: 100%; height: auto; display: block; }
+.sec__deco-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* Black ink needs inverting to read on the dark fields — but the dice
+   print is red, and inverting red gives cyan. It reads on both surfaces
+   as-is, so it opts out. */
+.t-navy .sec__deco-mark img,
+.t-ink .sec__deco-mark img { filter: invert(1); }
+.sec__deco-mark[data-mark="dice"] img { filter: none; }
+.t-carolina .sec__deco-mark { opacity: 0.13; }
 /* the section's own content has to clear the deco layer */
 .sec > *:not(.sec__deco) { position: relative; z-index: 1; }
 

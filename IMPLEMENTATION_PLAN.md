@@ -1,7 +1,65 @@
 # STÜSSY CHAPEL HILL — Implementation Plan
 
 > Living document. Updated after every Q&A round with the user.
-> **Status: BUILT v8 (2026-08-07) — running at `http://localhost:5173/Stussy/` (`Stussy/site/`, `npm run dev`).**
+> **Status: BUILT v9 (2026-08-08) — running at `http://localhost:5173/Stussy/` (`Stussy/site/`, `npm run dev`).**
+
+---
+
+## 0. v9 — REAL STÜSSY ARTWORK (2026-08-08)
+
+User feedback on v8: the background doodles read as obviously AI-generated, and
+the SVG marks I drew to replace them read as cheap clip-art. Pull the real
+Stüssy artwork instead.
+
+They were right on both counts. Redrawing this iconography as vectors produced
+clean geometry and threw away everything that makes it what it is — the ink
+bleed, the halftone stipple, the wobble of a hand-inked line.
+
+### Sourcing
+
+Stüssy photograph their graphic tees flat, front and back, on a plain field.
+That is effectively a scan of the print. Pulled the natural/white colourways of
+the 8 Ball, Box Crown, Tall Dice and Skulls tees from their catalogue —
+light garments so the ink separates cleanly.
+
+### `qa/extract_marks.mjs`
+
+Isolates printed artwork from a garment photo:
+
+1. **Cloth colour = frame median.** The print is a small minority of pixels, so
+   the median *is* the garment; no manual sampling.
+2. **Alpha = distance from that colour**, with the cloth un-premultiplied back
+   out so the red dice stay red instead of turning muddy.
+3. **Connected components on a downsampled mask.** Downsampling is the trick
+   that makes this work on hand-drawn art — separate strokes of one doodle merge
+   at 1/N scale while genuinely separate doodles stay apart, at a fraction of
+   the cost of a real dilation pass.
+4. **Containment merging** — interior detail (the "8" inside the ball, pips in a
+   die, eye sockets in a skull) is its own component and gets folded into the
+   parent it sits inside.
+5. Escape hatches for artwork that overlaps its neighbours in the print:
+   `--crop` to restrict the search, `--single` to merge a region, `--rel` to
+   drop fragments that are tiny next to the main mark, `--trim` for fragments
+   that physically *touch* it (the handstyle running under the dice) and so
+   share a connected component that nothing else can separate.
+
+Calibration that mattered: the alpha floor has to sit **above** cloth shading.
+Too low and the garment silhouette itself becomes one giant component.
+
+### Result
+
+`site/public/assets/marks/` — ball, crown, dice, skull, and the full skulls
+composition as a sheet. PNG → WebP took the set from 1.6 MB to 496 KB.
+
+Wired into the drift field, the crossings, the section deco, the loader field,
+the badges and the store block. The AI doodle set is deleted. Dark fields invert
+the black ink to read; the red dice opts out, since inverting red gives cyan.
+
+Perf unchanged: 8.3 ms median frame, 0% jank, 0 long tasks at 6× CPU throttle.
+
+> **Provenance:** these are Stüssy's copyrighted marks, used here in a
+> non-commercial fan/portfolio concept — as are the wordmark, product shots and
+> editorial photography this project already ran on. Not for any commercial use.
 
 ---
 

@@ -50,6 +50,13 @@ const PAD = opt('pad', 12)
 const cropArg = rest.find((a) => a.startsWith('--crop='))
 const CROP = cropArg ? cropArg.split('=')[1].split(',').map(Number) : null
 const SINGLE = rest.includes('--single')
+const REL = opt('rel', 0.12)
+/* --trim=top,right,bottom,left in output px. Last resort for fragments
+   that physically TOUCH the mark in the print (the handstyle running
+   under the dice) — those share a connected component, so neither a
+   size filter nor a source crop can separate them. */
+const trimArg = rest.find((a) => a.startsWith('--trim='))
+const TRIM = trimArg ? trimArg.split('=')[1].split(',').map(Number) : [0, 0, 0, 0]
 
 mkdirSync(OUT_DIR, { recursive: true })
 const dataUrl = `data:image/jpeg;base64,${readFileSync(SRC).toString('base64')}`
@@ -57,18 +64,25 @@ const dataUrl = `data:image/jpeg;base64,${readFileSync(SRC).toString('base64')}`
 const browser = await chromium.launch({ channel: 'chrome' })
 const page = await browser.newPage()
 
-const result = await page.evaluate(async ({ src, GAIN, FLOOR, SCALE, MIN, PAD }) => {
+const result = await page.evaluate(async ({ src, GAIN, FLOOR, SCALE, MIN, PAD, CROP, SINGLE, REL, TRIM }) => {
   const img = new Image()
   img.src = src
   await img.decode()
 
-  const W = img.naturalWidth
-  const H = img.naturalHeight
+  /* The cloth colour is sampled from the frame median, so the crop must
+     still contain mostly cloth — crop to a region, not to the ink. */
+  const fullW = img.naturalWidth
+  const fullH = img.naturalHeight
+  const cx = CROP ? Math.round(CROP[0] * fullW) : 0
+  const cy = CROP ? Math.round(CROP[1] * fullH) : 0
+  const W = CROP ? Math.round((CROP[2] - CROP[0]) * fullW) : fullW
+  const H = CROP ? Math.round((CROP[3] - CROP[1]) * fullH) : fullH
+
   const c = document.createElement('canvas')
   c.width = W
   c.height = H
   const ctx = c.getContext('2d', { willReadFrequently: true })
-  ctx.drawImage(img, 0, 0)
+  ctx.drawImage(img, cx, cy, W, H, 0, 0, W, H)
   const src32 = ctx.getImageData(0, 0, W, H)
   const px = src32.data
 
@@ -169,6 +183,27 @@ const result = await page.evaluate(async ({ src, GAIN, FLOOR, SCALE, MIN, PAD })
   }
   keep = keep.filter((b) => !absorbed.has(b.id))
 
+  /* --single: everything surviving in the crop is one mark.
+     REL drops fragments that are tiny next to the main mark — the
+     clipped ascenders of neighbouring type, a stray bit of the
+     handstyle — which is far more robust than hunting for a crop
+     rectangle that happens to miss them by a pixel. */
+  if (SINGLE && keep.length) {
+    const largest = keep[0].area
+    keep = keep.filter((b) => b.area >= largest * REL)
+    const all = new Set()
+    let minX = mw, minY = mh, maxX = 0, maxY = 0, area = 0
+    for (const b of keep) {
+      for (const id of family.get(b.id)) all.add(id)
+      minX = Math.min(minX, b.minX); minY = Math.min(minY, b.minY)
+      maxX = Math.max(maxX, b.maxX); maxY = Math.max(maxY, b.maxY)
+      area += b.area
+    }
+    const merged = { id: keep[0].id, minX, minY, maxX, maxY, area }
+    family.set(merged.id, all)
+    keep = [merged]
+  }
+
   /* ── 4. export each component at full resolution ─────────────── */
   const out = []
   const c2 = document.createElement('canvas')
@@ -176,10 +211,10 @@ const result = await page.evaluate(async ({ src, GAIN, FLOOR, SCALE, MIN, PAD })
 
   for (const b of keep) {
     const kin = family.get(b.id)
-    const x0 = Math.max(0, b.minX * SCALE - PAD)
-    const y0 = Math.max(0, b.minY * SCALE - PAD)
-    const x1 = Math.min(W, (b.maxX + 1) * SCALE + PAD)
-    const y1 = Math.min(H, (b.maxY + 1) * SCALE + PAD)
+    const x0 = Math.max(0, b.minX * SCALE - PAD + TRIM[3])
+    const y0 = Math.max(0, b.minY * SCALE - PAD + TRIM[0])
+    const x1 = Math.min(W, (b.maxX + 1) * SCALE + PAD - TRIM[1])
+    const y1 = Math.min(H, (b.maxY + 1) * SCALE + PAD - TRIM[2])
     const w = x1 - x0
     const h = y1 - y0
     if (w < 8 || h < 8) continue
@@ -210,7 +245,7 @@ const result = await page.evaluate(async ({ src, GAIN, FLOOR, SCALE, MIN, PAD })
   }
 
   return { W, H, bg, components: boxes.length, kept: out.length, out }
-}, { src: dataUrl, GAIN, FLOOR, SCALE, MIN, PAD })
+}, { src: dataUrl, GAIN, FLOOR, SCALE, MIN, PAD, CROP, SINGLE, REL, TRIM })
 
 const manifest = []
 result.out.forEach((o, i) => {

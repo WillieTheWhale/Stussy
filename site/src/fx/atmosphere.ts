@@ -24,13 +24,17 @@ const PHRASES = [
   'チャペルヒル店', 'Sold Out Forever', 'International Tribe',
 ]
 
-/* The hand-drawn rasters keep their charm; the vector marks add range
-   and tint through currentColor. Mixing the two is what stops the
-   drift field reading as one repeated sticker. */
-const DOODLES = ['8ball', 'crown', 'dice', 'ram']
-const MARKS = [
-  'crown', 'sparkle', 'spade', 'flame', 'skull', 'chain',
-  'wave', 'sun', 'dice', 'eightball', 'ball', 'star4',
+/* Real Stüssy print artwork, lifted off garment photography by
+   qa/extract_marks.mjs. Redrawing these as vectors produced clean
+   geometry and lost everything that mattered — the ink bleed, the
+   halftone stipple, the wobble of a hand-inked line. Aspect ratios vary
+   wildly (the crown is 2.6:1, the dice 1:2), so each carries its own
+   ratio and every placement sets width and lets height follow. */
+const MARKS: Array<{ file: string; ar: number }> = [
+  { file: 'ball',  ar: 620 / 528 },
+  { file: 'crown', ar: 534 / 206 },
+  { file: 'dice',  ar: 322 / 670 },
+  { file: 'skull', ar: 272 / 302 },
 ]
 
 /* Vite rewrites absolute asset paths in HTML and CSS for `base`, but NOT
@@ -38,7 +42,14 @@ const MARKS = [
    domain root and 404s on the /Stussy/ Pages deploy. */
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`.replace(/\/{2,}/g, '/')
 
-const SVG_NS = 'http://www.w3.org/2000/svg'
+const markImg = (name: string) => {
+  const img = document.createElement('img')
+  img.src = asset(`assets/marks/${name}.webp`)
+  img.alt = ''
+  img.loading = 'lazy'
+  img.decoding = 'async'
+  return img
+}
 
 interface Tier { fs: [number, number]; op: [number, number]; weight: number; dur: [number, number] }
 const TIERS: Tier[] = [
@@ -67,16 +78,6 @@ const pickTint = () => {
     r -= w
   }
   return TINTS[0][0]
-}
-
-const markSvg = (name: string) => {
-  const svg = document.createElementNS(SVG_NS, 'svg')
-  svg.setAttribute('viewBox', '0 0 100 100')
-  svg.setAttribute('aria-hidden', 'true')
-  const use = document.createElementNS(SVG_NS, 'use')
-  use.setAttribute('href', `#mk-${name}`)
-  svg.appendChild(use)
-  return svg
 }
 
 export interface Atmosphere {
@@ -164,34 +165,24 @@ export const initAtmosphere = (): Atmosphere | null => {
     el.style.setProperty('--spin', `${rand(-11, 11).toFixed(1)}deg`)
     el.style.setProperty('--dur', `${rand(11, 24).toFixed(1)}s`)
     el.style.setProperty('--delay', `${rand(-14, 0).toFixed(1)}s`)
-    el.style.setProperty('--c', `rgba(${pickTint()}, ${rand(0.085, 0.16).toFixed(3)})`)
-    el.appendChild(markSvg(bag[i % bag.length]))
+    /* The artwork carries its own ink colour, so opacity is the only
+       control here — no tinting. A red die reading as red is the point. */
+    el.style.setProperty('--op', rand(0.10, 0.19).toFixed(3))
+    const m = bag[i % bag.length]
+    el.style.setProperty('--ar', String(m.ar))
+    el.appendChild(markImg(m.file))
     midFrag.appendChild(el)
   }
   mid.appendChild(midFrag)
 
-  /* ── NEAR: crossings ────────────────────────────────────────────
-     Mixed media on purpose — the four hand-drawn rasters plus a few
-     vector marks, so a crossing is never predictable. */
+  /* ── NEAR: crossings ──────────────────────────────────────────── */
   const nearFrag = document.createDocumentFragment()
   const crossers: HTMLElement[] = []
-  for (const name of DOODLES) {
+  for (const m of [...MARKS, { file: 'sheet', ar: 768 / 1038 }]) {
     const el = document.createElement('div')
     el.className = 'atmos__chara'
-    const img = document.createElement('img')
-    img.src = asset(`assets/doodles/${name}.png`)
-    img.alt = ''
-    img.loading = 'lazy'
-    img.width = 520
-    img.height = 520
-    el.appendChild(img)
-    nearFrag.appendChild(el)
-    crossers.push(el)
-  }
-  for (const name of ['sparkle', 'flame', 'spade', 'skull']) {
-    const el = document.createElement('div')
-    el.className = 'atmos__chara -vector'
-    el.appendChild(markSvg(name))
+    el.style.setProperty('--ar', String(m.ar))
+    el.appendChild(markImg(m.file))
     nearFrag.appendChild(el)
     crossers.push(el)
   }
